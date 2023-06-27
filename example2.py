@@ -2,7 +2,7 @@
 Author: longshanxu 623119632@qq.com
 Date: 2023-06-20 17:15:05
 LastEditors: longshanxu 623119632@qq.com
-LastEditTime: 2023-06-27 09:37:36
+LastEditTime: 2023-06-27 17:16:47
 FilePath: \football_forecast_python\example2.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from pymongo import MongoClient
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, roc_auc_score, roc_curve
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, cross_val_score, train_test_split
 import tabulate
 import tkinter as tk
@@ -53,6 +53,17 @@ rf.fit(X, y)
 
 # 进行预测
 y_pred = rf.predict(X)
+
+# 计算特征重要性得分
+# importances = rf.feature_importances_
+
+# # 绘制特征重要性可视化
+# plt.bar(range(X.shape[1]), importances)
+# plt.xticks(range(X.shape[1]), X, rotation=0)
+# plt.xlabel('Features')
+# plt.ylabel('Importance Score')
+# plt.title('Feature Importance')
+# plt.show()
 
 # 定义随机森林分类器
 # rf = RandomForestClassifier(n_estimators=100, random_state=42)
@@ -132,9 +143,68 @@ y_pred = rf.predict(X)
 # 计算混淆矩阵
 cm = confusion_matrix(y, y_pred)
 
-# # 打印混淆矩阵
-# print("Confusion Matrix:")
-# print(cm)
+# 打印混淆矩阵
+print("Confusion Matrix:")
+print(cm)
+
+
+# # 绘制混淆矩阵可视化
+# plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+# plt.title('Confusion Matrix')
+# plt.colorbar()
+# tick_marks = np.arange(len([0,1,2]))
+# plt.xticks(tick_marks, [0,1,2], rotation=45)
+# plt.yticks(tick_marks, [0,1,2])
+# plt.xlabel('Predicted Label')
+# plt.ylabel('True Label')
+
+# # 显示图像
+# plt.show()
+
+# 计算分类报告
+# target_names = ['class 0', 'class 1', 'class 2']
+# report = classification_report(y, y_pred, target_names=target_names, output_dict=True)
+
+# # 将分类报告转换为表格
+# table_data = []
+# for k, v in report.items():
+#     if k in target_names:
+#         row = [k, v['precision'], v['recall'], v['f1-score'], v['support']]
+#         table_data.append(row)
+# table_data.append(['', '', '', '', ''])
+# table_data.append(['accuracy', '', '', report['accuracy'], ''])
+
+# # 绘制分类报告可视化
+# fig, ax = plt.subplots()
+# ax.axis('off')
+# ax.axis('tight')
+# ax.table(cellText=table_data, colLabels=['class', 'precision', 'recall', 'f1-score', 'support'], loc='center')
+
+# # 显示图像
+# plt.show()
+
+# # 找出错误样本的索引
+# idx = np.where(y != y_pred)[0]
+
+# 绘制散点图
+# plt.scatter(X.iloc[:, 0], X.iloc[:, 1], c=y)
+# plt.scatter(X.iloc[idx, 0], X.iloc[idx, 1], c='r', marker='x')
+# plt.xlabel("Feature 1")
+# plt.ylabel("Feature 2")
+# plt.show()
+
+# # 获取错误样本的特征
+# X_error = X.iloc[idx]
+
+# # 计算特征之间的相关系数
+# corr = X_error.corr()
+
+# # 绘制热力图
+# sns.heatmap(corr, cmap='coolwarm')
+
+# # 显示图像
+# plt.show()
+
 
 # # 绘制散点图
 # plt.scatter(X, y)
@@ -151,10 +221,21 @@ accuracy = (y_pred == y).mean()
 precision = cm[0, 0] / (cm[0, 0] + cm[1, 0] + cm[2, 0])
 recall = cm[0, 0] / (cm[0, 0] + cm[0, 1] + cm[0, 2])
 
+
+
 # 打印性能指标
 print("Accuracy:", accuracy)
 print("Precision:", precision)
 print("Recall:", recall)
+
+
+# accuracy = np.trace(cm) / float(np.sum(cm))
+# print('Accuracy:', accuracy)
+
+# # 计算分类报告
+# target_names = ['class 0', 'class 1', 'class 2']
+# print("Classification Report:")
+# print(classification_report(y, y_pred, target_names=target_names))
 
 # # 打印混淆矩阵
 # print("Confusion Matrix:")
@@ -172,9 +253,40 @@ print("Recall:", recall)
 # print("Classification Report:")
 # print(report)
 
-# collection = db['ForeCastData']
+collection1 = db['ForeCastData']
+
+## 指定要忽略的字段
+projection = {'_id': 0, '_created_at': 0 ,'_updated_at':0,'guestScore':0 ,'homeScore':0,'prediction':0}
+
+batch_size = 1000
+dataNew = []
+
+for i in range(0, collection1.count_documents({}), batch_size):
+    batch = list(collection1.find({}, projection).skip(i).limit(batch_size))
+    dataNew.extend(batch)
+
+dfNew = pd.DataFrame(dataNew)
+
+# 提取特征
+X_test = dfNew.drop(['home1','guest2'], axis=1)
+
+# 进行预测
+y_pred = rf.predict(X_test)
+
+# for i in range(len(y_pred)):
+#     query = {'_id': i}
+#     update = {'$set': {'prediction': y_pred[i]}}
+#     collection.update_one(query, update)
 
 
+# # 将预测结果添加到新数据中
+dfNew['prediction'] = y_pred
+
+
+# 将dfNew中的数据写回到MongoDB中
+data = dfNew.to_dict(orient='records')
+collection1.delete_many({})
+collection1.insert_many(data)
 
 # # 创建GUI窗口
 # root = tk.Tk()
@@ -190,32 +302,4 @@ print("Recall:", recall)
 # root.mainloop()
 
 
-
-
-
-
-
-# ## 指定要忽略的字段
-# projection = {'_id': 0, '_created_at': 0 ,'_updated_at':0,'guestScore':0 ,'homeScore':0,}
-
-# batch_size = 1000
-# dataNew = []
-
-# for i in range(0, collection.count_documents({}), batch_size):
-#     batch = list(collection.find({}, projection).skip(i).limit(batch_size))
-#     dataNew.extend(batch)
-
-# dfNew = pd.DataFrame(dataNew)
-
-# # 提取特征
-# X_test = dfNew.drop(['result','home1','guest2'], axis=1)
-
-# # 进行预测
-# y_pred = rf.predict(X_test)
-
-
-# # 将预测结果添加到新数据中
-# dfNew['predicted_homeScore'] = y_pred
-
-
-# # print(dfNew[["home1","guest2","predicted_homeScore"]])
+# print(dfNew[["home1","guest2","predicted_homeScore"]])
