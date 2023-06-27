@@ -1,5 +1,6 @@
 from pymongo import MongoClient
 import pandas as pd
+from sklearn.calibration import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor
@@ -23,7 +24,7 @@ db = client['datacenter']
 collection = db['AiData']
 
 ## 指定要忽略的字段
-projection = {'_id': 0, '_created_at': 0 ,'_updated_at':0,'homeScore':0,'guestScore':0}
+projection = {'_id': 0, '_created_at': 0 ,'_updated_at':0}
 
 batch_size = 1000
 data = []
@@ -47,19 +48,19 @@ corr_matrix = df.corr()
 
 
 ## 选择最相关的特征
-# relevant_features = corr_matrix.index[abs(corr_matrix['reslut']) > 0.019]
-relevant_features = ['prevHomeNameScore', 'drawTouzhuE', 'sanhuWinXinli',
-       'sanhuDrawXinli', 'sanhuLoseXinli', 'zhuangjiaWinXinli',
-       'zhuangjiaDrawXinli', 'zhuangjiaLoseXinli', 'liangduiWinLishi',
-       'liangduiDrawLishi', 'liangduiLoseLishi', 'lishirangqiu',
-       'zuijinrangqiu', 'lishiqiushu', 'zuijinqiushu', 'zuijinguestqiushu',
-       'zuijinguestmaxqiushu', 'zuijinhomediuqiushu', 'zuijinguestdiuqiushu',
-       'homehistoryscore', 'guesthistoryscore', 'fiveavgjinqiushu',
-       'fouravgdiuqiushu', 'fouravgjinqiushu', 'rangqiuqian', 'rangqiuhou',
-       'qiushuqian', 'qiushuhou', 'touzhuhomebili', 'touzhuguestbili',
-       'homeprevbisaiscore', 'guestprevbisaiscore', 'homeprevbisaijiqiu',
-       'guestTwojinqiushu', 'homeTwodiuqiushu', 'homeTwoshuying',
-       'guestTwoshuying', 'homevsguestshuying', 'guestvshomeshuying']
+relevant_features = corr_matrix.index[abs(corr_matrix['reslut']) > 0.2]
+# relevant_features = ['prevHomeNameScore', 'drawTouzhuE', 'sanhuWinXinli',
+#        'sanhuDrawXinli', 'sanhuLoseXinli', 'zhuangjiaWinXinli',
+#        'zhuangjiaDrawXinli', 'zhuangjiaLoseXinli', 'liangduiWinLishi',
+#        'liangduiDrawLishi', 'liangduiLoseLishi', 'lishirangqiu',
+#        'zuijinrangqiu', 'lishiqiushu', 'zuijinqiushu', 'zuijinguestqiushu',
+#        'zuijinguestmaxqiushu', 'zuijinhomediuqiushu', 'zuijinguestdiuqiushu',
+#        'homehistoryscore', 'guesthistoryscore', 'fiveavgjinqiushu',
+#        'fouravgdiuqiushu', 'fouravgjinqiushu', 'rangqiuqian', 'rangqiuhou',
+#        'qiushuqian', 'qiushuhou', 'touzhuhomebili', 'touzhuguestbili',
+#        'homeprevbisaiscore', 'guestprevbisaiscore', 'homeprevbisaijiqiu',
+#        'guestTwojinqiushu', 'homeTwodiuqiushu', 'homeTwoshuying',
+#        'guestTwoshuying', 'homevsguestshuying', 'guestvshomeshuying']
 
 ## 输出最相关的特征
 print(relevant_features)
@@ -73,6 +74,14 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 ##训练随机森林模型
 rf_model = RandomForestRegressor()
 rf_model.fit(X_train, y_train)
+
+# 反转类别标签
+le = LabelEncoder()
+y_train_reverse = le.fit_transform(y_train)
+y_train_reverse = 1 - y_train_reverse
+
+# 重新训练模型
+rf_model.fit(X_train, y_train_reverse)
 
 ##使用测试集进行模型评估
 rf_score = rf_model.score(X_test, y_test)
@@ -117,9 +126,4 @@ print('预测结果:', y_predNew)
 dfNew['predicted_homeScore'] = y_predNew
 print(dfNew[["home","time","predicted_homeScore"]])
 
-## 可视化预测结果
-# plt.plot(y_predNew)
-# plt.title('result')
-# plt.xlabel('donet')
-# plt.ylabel('homeScore Value')
-# plt.show()
+ 
