@@ -2,7 +2,7 @@
 Author: longshanxu 623119632@qq.com
 Date: 2023-06-20 17:15:05
 LastEditors: longshanxu 623119632@qq.com
-LastEditTime: 2023-06-27 17:16:47
+LastEditTime: 2023-06-29 20:13:37
 FilePath: \football_forecast_python\example2.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
@@ -54,16 +54,21 @@ rf.fit(X, y)
 # 进行预测
 y_pred = rf.predict(X)
 
-# 计算特征重要性得分
+# # 计算特征重要性得分
 # importances = rf.feature_importances_
 
-# # 绘制特征重要性可视化
+# # # 绘制特征重要性可视化
 # plt.bar(range(X.shape[1]), importances)
 # plt.xticks(range(X.shape[1]), X, rotation=0)
 # plt.xlabel('Features')
 # plt.ylabel('Importance Score')
 # plt.title('Feature Importance')
 # plt.show()
+
+
+# 打印随机森林的决策深度
+# for i, tree in enumerate(rf.estimators_):
+#     print('Depth of decision tree', i+1, ':', tree.tree_.max_depth)
 
 # 定义随机森林分类器
 # rf = RandomForestClassifier(n_estimators=100, random_state=42)
@@ -223,6 +228,7 @@ recall = cm[0, 0] / (cm[0, 0] + cm[0, 1] + cm[0, 2])
 
 
 
+
 # 打印性能指标
 print("Accuracy:", accuracy)
 print("Precision:", precision)
@@ -283,23 +289,20 @@ y_pred = rf.predict(X_test)
 dfNew['prediction'] = y_pred
 
 
-# 将dfNew中的数据写回到MongoDB中
-data = dfNew.to_dict(orient='records')
-collection1.delete_many({})
-collection1.insert_many(data)
+# # 将dfNew中的数据写回到MongoDB中
+# data = dfNew.to_dict(orient='records')
+# collection1.delete_many({})
+# collection1.insert_many(data)
 
-# # 创建GUI窗口
-# root = tk.Tk()
+# 创建GUI窗口
+root = tk.Tk()
 
-# # 创建Text组件
-# text = tk.Text(root)
-# text.pack()
+# 创建Text组件
+text = tk.Text(root)
+text.pack()
 
-# # 在Text组件中打印DataFrame的内容
-# text.insert(tk.END, dfNew[["home1","guest2","predicted_homeScore"]].to_string())
+# 在Text组件中打印DataFrame的内容
+text.insert(tk.END, dfNew[["home1","guest2","prediction"]].to_string())
 
-# # 运行GUI窗口
-# root.mainloop()
-
-
-# print(dfNew[["home1","guest2","predicted_homeScore"]])
+# 运行GUI窗口
+root.mainloop()
