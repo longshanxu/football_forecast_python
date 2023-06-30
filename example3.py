@@ -2,7 +2,7 @@
 Author: longshanxu 623119632@qq.com
 Date: 2023-06-20 17:15:05
 LastEditors: longshanxu 623119632@qq.com
-LastEditTime: 2023-06-29 18:12:21
+LastEditTime: 2023-06-30 17:11:52
 FilePath: \football_forecast_python\example2.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
@@ -24,7 +24,8 @@ db = client['datacenter']
 collection = db['AiQiuData']
 
 ## 指定要忽略的字段
-projection = {'_id': 0, '_created_at': 0 ,'_updated_at':0,}
+projection = {'_id': 0, '_created_at': 0 ,'_updated_at':0,'matchId':0,
+              'matchTime':0,'date':0,}
 
 batch_size = 10000
 data = []
@@ -49,17 +50,11 @@ rf.fit(X, y)
 # 进行预测
 y_pred = rf.predict(X)
 
-# # 计算特征重要性得分
-# importances = rf.feature_importances_
-
-# # # 绘制特征重要性可视化
-# plt.bar(range(X.shape[1]), importances)
-# plt.xticks(range(X.shape[1]), X, rotation=0)
-# plt.xlabel('Features')
-# plt.ylabel('Importance Score')
-# plt.title('Feature Importance')
+# 特征重要性柱状图
+# importance = rf.feature_importances_
+# plt.bar(X.columns, importance)
+# plt.xticks(rotation=0)
 # plt.show()
-
 
 # 打印随机森林的决策深度
 # for i, tree in enumerate(rf.estimators_):
@@ -79,6 +74,46 @@ accuracy = (y_pred == y).mean()
 
 # 打印性能指标
 print("Accuracy:", accuracy)
+
+
+collection1 = db['ForeCastQiuData']
+
+## 指定要忽略的字段
+projection = {'_id': 0, '_created_at': 0 ,'_updated_at':0,'guestScore':0 ,'homeScore':0,'prediction':0}
+
+batch_size = 1000
+dataNew = []
+
+for i in range(0, collection1.count_documents({}), batch_size):
+    batch = list(collection1.find({}, projection).skip(i).limit(batch_size))
+    dataNew.extend(batch)
+
+dfNew = pd.DataFrame(dataNew)
+
+# 提取特征
+X_test = dfNew.drop(['home1','guest2','date','matchId','matchTime'], axis=1)
+
+# print(X_test)
+
+# 进行预测
+y_pred = rf.predict(X_test)
+
+
+# 将预测结果添加到新数据中
+dfNew['prediction'] = y_pred
+
+# 创建GUI窗口
+root = tk.Tk()
+
+# 创建Text组件
+text = tk.Text(root)
+text.pack()
+
+# 在Text组件中打印DataFrame的内容
+text.insert(tk.END, dfNew[["home1","guest2","prediction"]].to_string())
+
+# 运行GUI窗口
+root.mainloop()
 
 
 
